@@ -1,0 +1,26 @@
+EXECUTABLE=compress
+EDITOR=gedit
+CC=g++
+CFLAGS=-c -Wall -pedantic
+LDFLAGS=
+SOURCES=main.cpp encoder.cpp decoder.cpp class/shan_table.class.cpp
+OBJECTS=$(SOURCES:.cpp=.o)
+SOURLIBS=$(SOURCES:.cpp=.h)
+
+all: $(SOURCES) $(EXECUTABLE)
+	
+$(EXECUTABLE): $(OBJECTS) 
+	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+
+.cpp.o:
+	$(CC) $(CFLAGS) $< -o $@
+
+clean:
+	rm *.o class/*.o
+
+open: 
+	$(EDITOR) $(SOURCES) $(SOURLIBS) &
+
+test:
+	./$(EXECUTABLE) c ./2.jpg ./compress2.jpg
+

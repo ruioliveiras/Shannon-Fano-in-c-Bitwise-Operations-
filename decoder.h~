@@ -1,0 +1,24 @@
+#ifndef DECODER_H
+#define DECODER_H
+#include <fstream>
+#include <string.h>
+#include "class/shan_table.class.h"
+
+class Decoder
+{
+	private:
+		ShanTable mdShan;
+		void readTable();
+	public:
+		Decoder();
+		void fileName(std::string fileName);
+		void startReading();
+		void startWriting(std::string fileName);
+		void close();
+		void printTable();
+		
+};
+
+
+
+#endif

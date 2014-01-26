@@ -1,0 +1,364 @@
+\documentclass[11pt,a4paper]{report}
+  
+%\usepackage[portuguese]{babel}
+ 
+%\usepackage[latin1]{inputenc} 
+ 
+\usepackage[T1]{fontenc}
+%Em Linux
+\usepackage{indentfirst}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+
+\setlength{\parskip}{10pt plus 1pt minus 1pt}
+
+\author{Rui Pedro Azevedo Oliveira} 
+ 
+\title{Compressor  Shannon Fano}
+ 
+\begin{document}
+ 
+\maketitle
+\tableofcontents 
+
+\begin{abstract}
+
+O Objetivo deste trabalho era a criação de uma ferramenta de compressão utilizando o algoritmo de \textit{Shanno Fano} e \textit{Run-length encoding}. 
+
+Neste relatório poderám ser encontrado três capitulos: "Código", "Testes" e "Conclusões". No capitulo Código irá ser falada a estrutura do código e alguns dados tecnicos sobre a implementação do algoritmo. Em Testes irám ser descritos alguns testes realizados a esta ferramenta e finalmente em Conclusões serám descritas todos as conclusões que se obteve com este trabalho.
+
+\end{abstract}
+ 
+
+\chapter{Código}
+\centerline{\textit{Explicação da estrutura do código}}
+
+\vspace{6cm}
+A linguagem usada para a realização do trabalho foi \textit{C++}.
+
+O código foi editado com o \textit{Gedit}, e compilado por \textit{G++}.
+\newpage
+\section{Estrutura do Código}
+
+Os ficheiros com o código fonte estão na pasta \textit{"source"}, nesta pasta podemos encontrar os seguintes ficheiros de código: 
+\begin{itemize}
+\item \textit{"main.cpp"} 
+\item \textit{"decoder.cpp"} Motor de descompressão
+\item \textit{"encoder.cpp"} Motor de compressão
+\item Sub pasta \textit{"struct"} com a estrutura de dados:
+	\begin{itemize}
+		\item \textit{"shan\_table.class.cpp"} Tabela Shannon Fano			
+		\item \textit{"shan\_row.class.cpp"} Linhas da tabela Shannon Fano
+	\end{itemize}
+\end{itemize}
+
+A extensão usada para o código foi \textit{.cpp} e \textit{.h} para o cabeçalho, note-se que todos os fichiros \textit{.cpp} tem um ficheiro correspondente \textit{.h}
+
+O desenvolvimento do código foi feito de forma modelar, assim caso seja necessário  mudar alguma funcionalidade, para por exemplo otimizar, é mais fácil.
+
+\newpage
+\section{Motor de Compressão} 
+O Motor de compressão está no ficheiro \textit{"encoder.cpp"}. O seu funcinamente pode ser divido em duas grandes partes: \textbf{ler amostra} e \textbf{escrever compressão}, estas duas ações está respectivamente nas funções: \textit{startSample} e \textit{startWriting}. 
+
+As amostras são tiradas no ficheiro todo, uma vez que a maior parte do tempo de execução estão na descompressão (ver \ref{sec:Otimizacoes}, e iria compremeter a qualidade das amostras.
+O tamanho das palavras são: 1 \textit{Byte}.
+
+Após ter a lista de frequências preenchida irá ser aplicado o algoritmo de Shannon fano, para mais pormenores consultar \ref{sec:tabelaShannon}.
+ 
+\subsection{Escrita da Tabela de Frequências}
+O ficheiro comprimido está agora pronto para começar a ser escrito, a primeira coisa a escrever é a tabela de frequências: existem $2^8 + 1 = 257$ frequências diferentes e cada frequência é um \textit{unsigned long}.
+
+A forma encontrada para escrever todo esta informação foi escrever um \textit{array} de \textit{unsigned long} com comprimento $257$.
+
+\subsection{Escrita do Ficheiro}
+Os dados relativos ao ficheiro são agora escritos. Para isso lê-se o ficheiro original e para cada  \textit{Byte} é acedida a tabela \textit{Shannon Fanno} e é escrito o numero variável de \textit{bits} correspondentes ao \textit{Byte} original.
+
+O ultimo \textit{Byte} do ficheiro é um palavra especial que sinaliza o fim do ficheiro. 
+
+Para a escrita e leitura é usada um buffer de tamanho 4048 \textit{bytes}.
+\newpage
+% ###############  Motor de Descompressão
+\section{Motor de Descompressão}
+O Motor de Descompressão está no ficheiro \textit{"decoder.cpp"}. O seu funcionamento tal como o motor de compressão está divido em duas grandes parte: \textbf{ler Tabela} e \textbf{escrever descompressão}, estas duas ações está respectivamente nas funções: \textit{startReading} e \textit{startWriting}. 
+
+
+\subsection{Leitura da Tabela de Frequências}
+A leitura da tabela de Frequências exatamente a operação inversa da escrita no motor de compressão. Lê-se um \textit{array} de \textit{unsigned long} com comprimento $257$.
+
+Onde a frequência de um determinado \textit{char} com valor N é: o valor do array na posição N.
+
+A tabela de \textit{Shannon Fanno} pode agora ser criada.
+
+\subsection{Escrita do Ficheiro}
+Para a escrita do ficheiro original, é lido o ficheiro comprimido \textit{bit} por \textit{bit} e é acedida a tabela de \textit{Shannon Fanno}.
+
+Numa primeira fase o programa utilizava a função \textit{$void getCharByBitsTable(char a,int bitIndex, unsigned int * index)$} que para encontrar uma palavra percorria toda a tabela de palavras, tempo linear.
+
+Como otmização criou-se \textit{$void getCharByBitsGraph(char a,int bitIndex, unsigned int * index)$} que utiliza um grafo para encontrar as palavras em tempo constante. Para mais informações sobre o grafo consultar \ref{sec:tabelaShannon}.
+
+\newpage
+\section{Tabela Shannon Fano}
+\label{sec:tabelaShannon}
+
+A criação da tabela de \textit{Shannon Fanno} é feito na class \textit{ShanTable} no ficheiro \textit{Shan\_table.class.cpp}. Aqui são guardados dos dados Relativos á tabela: são eles as frequências, e o conjunto de bits correspondentes a cada palavra - ver \ref{sec:tabelaShannonRow}
+
+Quando este é executado o \textit{$void ShanTable::createShanTable()$} a class cria a tabela em duas formas: Forma de Tabela e Forma de Grafo.
+
+Forma de tabela para acesso direto quando se está a realizar a compressão - são copiados blocos de \textit{bits} de uma vez aproveitando a mecânica de um \textit{byte} completo, e é acedido em tempo constante.
+
+Forma de Grafo para acesso direto quando se está a realizar a descompressão - mais fácil para acesso \textit{bit} por \textit{bit}, e tempo constante para procura.
+
+
+Esta classe tem a particularidade de poder ter caracteres especiais para fins heurísticos. Como é o caso do caractere que simboliza o fim do ficheiro, outra possível funcionalidade desta particularidade pode ser vista em \ref{sec:otimizacaoespecial}
+
+\subsection{Classe ShanRow}
+\label{sec:tabelaShannonRow}
+Esta classe tem por fim guardar e gerir um número variável de \textit{bits}.
+Guarda os Bits numa lista de \textit{unsingned char} com tamanho variável, se precisar reinstancia com o dobro do tamanho.
+
+
+
+\newpage
+% ###############################################################   testes
+\chapter{Testes}
+\centerline{\textit{Diferentes testes executados ao código.}}
+
+\vspace{6cm}
+\textbf{Máquina usada:}
+
+Sistema Operativo: Fedora 19.
+
+CPU: Intel Core i7-4700MQ CPU 2.40GHz x8.
+
+GPU: Intel Haswell Mobile.
+
+Memoria: $7.7 GiB$.
+
+Para a medição do tempo foi usado o comando \textit{time} e foi tido em conta o tempo real, e a comparação de ficheiros foi usada o comando \textit{md5sum}.
+
+\newpage
+\section{Ficheiro ProsperDataExport\_xml com 3.1GB}
+O ficheiro pode ser encontrado no endereço:\\ \url{https://services.prosper.com/DataExport/ProsperDataExport_xml.zip}
+
+
+\subsection{Com RLE}
+\textbf{Tempo de Compressão}: 1m51.789s
+
+\textbf{Tempo de Descompressão}:3m38.293s.
+
+\textbf{Tamanho comprimido}: 3.0GB.
+
+\textbf{Comparação de ficheiros, usando md5sum}:
+
+\textbf{Original}: b901234ffc0f1e1a3826271b493c9831.
+
+\textbf{Final}: b901234ffc0f1e1a3826271b493c9831
+
+
+\subsection{Sem RLE}
+
+\textbf{Tempo de Compressão}: 1m0.772s
+
+\textbf{Tempo de Descompressão}: 2m35.924s
+
+\textbf{Tamanho comprimido}: 2.2GB .
+
+\textbf{Comparação de ficheiros, usando md5sum}:
+
+\textbf{Original}: b901234ffc0f1e1a3826271b493c9831.
+
+\textbf{Final}: b901234ffc0f1e1a3826271b493c9831
+
+
+
+\section{Ficheiro  201061200010\_1 com 22MB}
+O ficheiro pode ser encontrado no endereço:\\ \url{http://www.nbb.be/DOC/BA/PDF7MB/2010/201061200010_1.PDF}
+
+
+\subsection{Com RLE}
+\textbf{Tempo de Compressão}: 0m0.727s
+
+\textbf{Tempo de Descompressão}: 0m1.686s
+
+\textbf{Tamanho comprimido}: 27 MB.
+
+\textbf{Comparação de ficheiros, usando md5sum}:
+
+\textbf{Original}: 70f7ad2738d496aef091083f1b78ad01.
+
+\textbf{Final}: 70f7ad2738d496aef091083f1b78ad01
+
+
+\subsection{Sem RLE}
+
+\textbf{Tempo de Compressão}: 0m0.475s
+
+\textbf{Tempo de Descompressão}: 	0m1.610s
+
+\textbf{Tamanho comprimido}: 22.5MB .
+
+\textbf{Comparação de ficheiros, usando md5sum}:
+
+\textbf{Original}: 70f7ad2738d496aef091083f1b78ad01.
+
+\textbf{Final}: 70f7ad2738d496aef091083f1b78ad01
+
+\newpage
+
+\section{Ficheiro com 2.5MB extensão .txt}
+
+Este ficheiro pode ser encontrado na pasta \textit{ficheiros\_teste}
+
+	\subsection{Com RLE}
+	\textbf{Tempo de Compressão}: 0m0.054s
+
+	\textbf{Tempo de Descompressão}: 0m0.053s.
+
+	\textbf{Tamanho comprimido}: 1MB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: 8e064e2b7a73deee4cce28aafe90e998.
+
+	\textbf{Final}: 8e064e2b7a73deee4cce28aafe90e998
+	\subsection{Sem RLE}
+	\textbf{Tempo de Compressão}: 0m0.043s.
+
+	\textbf{Tempo de Descompressão}: 0m0.031s.
+
+	\textbf{Tamanho comprimido}: 635.2 Kb.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: 8e064e2b7a73deee4cce28aafe90e998.
+
+	\textbf{Final}: 8e064e2b7a73deee4cce28aafe90e998
+
+
+\section{Ficheiro com 365.8kB extensão .jpg}
+
+Este ficheiro pode ser encontrado na pasta \textit{ficheiros\_teste}
+
+	\subsection{Com RLE}
+	\textbf{Tempo de Compressão}: 0m0.016s.
+
+	\textbf{Tempo de Descompressão}: 0m0.030s.
+
+	\textbf{Tamanho comprimido}: 450.1kB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: a6383fe291c909235c766599821baa35.
+
+	\textbf{Final}: a6383fe291c909235c766599821baa35
+	\subsection{Sem RLE}
+	\textbf{Tempo de Compressão}: 0m0.010s.
+
+	\textbf{Tempo de Descompressão}: 0m0.029s
+
+	\textbf{Tamanho comprimido}: 369.9 kB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: a6383fe291c909235c766599821baa35.
+
+	\textbf{Final}: a6383fe291c909235c766599821baa35
+
+
+\section{Ficheiro com 237 MB extensão .rar}
+Este ficheiro não pode ser encontrado na \textit{Internet}.
+
+	\subsection{Com RLE}
+
+	\textbf{Tempo de Compressão}: 8.489s.
+
+	\textbf{Tempo de Descompressão}: 20.436s.
+
+	\textbf{Tamanho comprimido}: 300.2 MB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: cc4e477963caba0756e3c570a4654e63.
+
+	\textbf{Final}: cc4e477963caba0756e3c570a4654e63
+
+
+	\subsection{Sem RLE}
+
+	\textbf{Tempo de Compressão}: 0m4.987s
+
+	\textbf{Tempo de Descompressão}: 0m14.290s
+
+	\textbf{Tamanho comprimido}: 242.8 MB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: cc4e477963caba0756e3c570a4654e63.
+
+	\textbf{Final}: cc4e477963caba0756e3c570a4654e63
+
+
+\section{Ficheiro com 458.0MB extensão .zip}
+Este ficheiro não pode ser encontrado na \textit{Internet}.
+
+	\subsection{Com RLE}
+	\textbf{Tempo de Compressão}: 0m16.498s.
+
+	\textbf{Tempo de Descompressão}: 0m36.252s.
+
+	\textbf{Tamanho comprimido}: 579.4 MB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: 1fabcc3f772ba8b2fc194d6e0449da17.
+
+	\textbf{Final}: 1fabcc3f772ba8b2fc194d6e0449da17.
+	\subsection{Sem RLE}
+	\textbf{Tempo de Compressão}: 0m9.944s.
+
+	\textbf{Tempo de Descompressão}: 0m28.010s.
+
+	\textbf{Tamanho comprimido}: 468.0MB.
+
+	\textbf{Comparação de ficheiros, usando md5sum}:
+
+	\textbf{Original}: 1fabcc3f772ba8b2fc194d6e0449da17.
+
+	\textbf{Final}: 1fabcc3f772ba8b2fc194d6e0449da17
+
+
+% ###############################################################   Concluões
+
+\chapter{Conclusões}
+\section{Níveis de Compressão}
+Os níveis de compressão em ficheiros já comprimidos por natureza, como é o caso dos \textit{.jpg, .rar e .zip} não são muito bons, pois já não existe muito mais para comprimir.
+Mas em ficheiros de texto o nivel de compressão é melhor, passando a ter menos de metade do tamanho original quer com RLE ou sem RLE.\\
+O que sugere que nem todos os ficheiros podem ser comprimidos com sucesso e se mesmo assim quisermos comprimir irá ser criado um ficheiro maior que o original.
+
+\section{Uso ou não de RLE}
+Em teoria o RLE devia ser vantajoso nos ficheiros com muitos caracteres repetidos, como é o caso do ficheiro de texto com 2.5MB (tem bastantes espaços seguidos em vários sítios).
+
+Mas nem neste ficheiro o uso de RLE ajudou a comprimir, portanto é provável que para os ficheiros quotidianos o uso de RLE traga piores níveis de compressão.
+
+\section{Tempos de execução}
+\label{sec:Otimizacoes}
+O tempo de Descompressão é, em média, o dobro do tempo de compressão, o que é provável que se deva ao facto de ter que correr o ficheiro \textit{bit} por \textit{bit}.
+
+\section{Possiveis Otimizações}
+\label{sec:otimizacaoespecial}
+Algumas possiveis otimizações para que a aplicação conseguisse diminuir os tempos de execução seriam: 
+\begin{itemize}
+\item Correr o ficheiro uma única vez durante a descompressão, colocando ao longo do ficheiro as alterações na tabela.
+\item Usar RLE apenas quando fossem detectados um certo número de palavras repetidas.
+\item Deixar de correr ficheiro \textit{bit} por \textit{bit} na descompressão, passando a comparar bloco por bloco.
+\end{itemize}
+
+\label{sec:otimizacaoespecial}
+
+\section{Conclusão}
+O algoritmo de Shannon Fano não é complicado, mas a forma como os ficheiros estão organizados e são lidos/escritos torna a sua implementação um pouco difícil, o natural é ler e escrever 8 \textit{bits} de cada vez, escrever e ler um número variável de \textit{bits} é um pouco complicado.
+
+Os níveis de compressão irão depender do ficheiro a ser comprimido, podem ser bons ou maus, dependendo se já está comprimido ou não.
+
+\end{document}
